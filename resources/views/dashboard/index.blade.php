@@ -4,7 +4,9 @@
 
 @section('content')
     <h1>Dashboard</h1>
-    <p>Welcome to the Point-of-Sale System.</p>
+    <p class="dashboard-welcome">
+    Welcome to the Point-of-Sale System.
+</p>
 
     <div class="cards">
         <div class="card">

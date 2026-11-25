@@ -45,5 +45,9 @@
 
 <br>
 
-<button type="submit">Save Customer</button>
-<a href="{{ route('customers.index') }}">Cancel</a>
+<button type="submit" class="btn btn-save">Save Customer</button>
+
+<a href="{{ route('customers.index') }}"
+   class="btn btn-secondary">
+    Cancel
+</a>

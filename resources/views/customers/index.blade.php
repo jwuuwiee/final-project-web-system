@@ -14,7 +14,10 @@
     @endif
 
     <p>
-        <a href="{{ route('customers.create') }}">Add Customer</a>
+        <a href="{{ route('customers.create') }}" class="btn btn-add">
+    + Add Customer
+</a>    
+
     </p>
 
     <table border="1" cellpadding="10" cellspacing="0" width="100%">
@@ -34,7 +37,10 @@
                     <td>{{ $customer->email }}</td>
                     <td>{{ $customer->phone ?? 'N/A' }}</td>
                     <td>
-                        <a href="{{ route('customers.edit', $customer) }}">Edit</a>
+                        <a href="{{ route('customers.edit', $customer) }}"
+   class="btn btn-edit">
+    Edit
+</a>    
 
                         <form action="{{ route('customers.destroy', $customer) }}"
                               method="POST"
@@ -43,9 +49,10 @@
                             @method('DELETE')
 
                             <button type="submit"
-                                    onclick="return confirm('Delete this customer?')">
-                                Delete
-                            </button>
+        class="btn btn-delete"
+        onclick="return confirm('Delete this customer?')">
+    Delete
+</button>
                         </form>
                     </td>
                 </tr>
