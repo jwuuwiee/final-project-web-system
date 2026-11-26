@@ -5,6 +5,14 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\SaleController;
+
+Route::resource('customers', CustomerController::class)
+    ->except(['show']);
+    
+Route::resource('sales', SaleController::class)
+    ->only(['index', 'create', 'store']);
 use App\Http\Controllers\ProductController;
 
 Route::get('/', function () {
