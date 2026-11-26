@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,7 +11,6 @@ use App\Models\Sale;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     protected $fillable = [
@@ -32,8 +32,18 @@ class User extends Authenticatable
         ];
     }
 
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(
+            fn () => $this->avatar
+                ? asset('storage/'.$this->avatar)
+                : null
+        );
+    }
+
     public function sales()
     {
         return $this->hasMany(Sale::class, 'sold_by');
     }
+}
 }
