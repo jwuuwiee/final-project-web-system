@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\AvatarService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class UserController extends Controller
 {
@@ -32,71 +34,151 @@ class UserController extends Controller
     {
         $data = $request->validate($this->rules());
 
-        $data['avatar'] = $request->hasFile('avatar')
+        $newPath = $request->hasFile('avatar')
             ? $this->avatars->store($request->file('avatar'))
             : null;
 
-        User::create($data);
+        $data['avatar'] = $newPath;
 
-        return redirect()->route('users.index')->with('success', 'Staff member added.');
+        try {
+            User::create($data);
+        } catch (Throwable $exception) {
+            $this->avatars->delete($newPath);
+
+            throw $exception;
+        }
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Staff member added.');
     }
 
     public function edit(User $user): View
     {
-        return view('users.edit', ['user' => $user]);
+        return view('users.edit', [
+            'user' => $user,
+        ]);
     }
 
-    public function update(Request $request, User $user): RedirectResponse
-    {
+    public function update(
+        Request $request,
+        User $user
+    ): RedirectResponse {
         $data = $request->validate($this->rules($user));
 
+        $oldPath = $user->avatar;
+        $newPath = null;
+
+        unset($data['avatar']);
+
         if ($request->hasFile('avatar')) {
-            $this->avatars->delete($user->avatar);
-            $data['avatar'] = $this->avatars->store($request->file('avatar'));
-        } else {
-            unset($data['avatar']);
+            $newPath = $this->avatars->store(
+                $request->file('avatar')
+            );
+
+            $data['avatar'] = $newPath;
         }
 
         if (blank($data['password'] ?? null)) {
             unset($data['password']);
         }
 
-        $user->update($data);
+        try {
+            $user->update($data);
+        } catch (Throwable $exception) {
+            $this->avatars->delete($newPath);
 
-        return redirect()->route('users.index')->with('success', 'Staff member updated.');
+            throw $exception;
+        }
+
+        if ($newPath !== null) {
+            $this->avatars->delete($oldPath);
+        }
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Staff member updated.');
     }
 
     public function destroy(User $user): RedirectResponse
     {
         if ($user->is(Auth::user())) {
-            return back()->with('error', 'You cannot delete the account you are logged in with.');
+            return back()->with(
+                'error',
+                'You cannot delete the account you are logged in with.'
+            );
         }
-
 
         if ($user->sales()->exists()) {
-            return back()->with('error', 'This staff member has recorded sales and cannot be deleted.');
+            return back()->with(
+                'error',
+                'This staff member has recorded sales and cannot be deleted.'
+            );
         }
 
-        $this->avatars->delete($user->avatar);
-        $user->delete();
+        $oldPath = $user->avatar;
 
-        return redirect()->route('users.index')->with('success', 'Staff member deleted.');
+        try {
+            $user->delete();
+        } catch (QueryException $exception) {
+            if (! in_array(
+                $exception->errorInfo[0] ?? '',
+                ['23000', '23503'],
+                true
+            )) {
+                throw $exception;
+            }
+
+            return back()->with(
+                'error',
+                'This staff member is referenced by another record.'
+            );
+        }
+
+        $this->avatars->delete($oldPath);
+
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Staff member deleted.');
     }
 
-    
     private function rules(?User $user = null): array
     {
         return [
             'username' => [
-                'required', 'string', 'max:50', 'alpha_dash',
-                Rule::unique('users', 'username')->ignore($user?->id),
+                'required',
+                'string',
+                'max:50',
+                'alpha_dash',
+                Rule::unique('users', 'username')->ignore($user),
             ],
-            'full_name' => ['required', 'string', 'max:100'],
-            'password' => $user
-                ? ['nullable', 'string', 'min:8', 'confirmed']
-                : ['required', 'string', 'min:8', 'confirmed'],
+
+            'full_name' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+
+            'password' => [
+                'bail',
+                $user ? 'nullable' : 'required',
+                'string',
+                'min:8',
+                'max:72',
+                'confirmed',
+
+                function ($attribute, $value, $fail) {
+                    if (strlen($value) > 72) {
+                        $fail('The password must not exceed 72 bytes.');
+                    }
+                },
+            ],
+
             'avatar' => [
-                'nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048',
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png',
+                'max:2048',
                 'dimensions:max_width=3000,max_height=3000',
             ],
         ];
