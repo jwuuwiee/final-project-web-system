@@ -33,6 +33,17 @@ return new class extends Migration
             $table->integer('last_activity')->index();
         });
     }
+{
+    Schema::create('users', function (Blueprint $table) {
+        $table->id();
+        $table->string('username', 50)->unique();
+        $table->string('full_name', 100);
+        $table->string('password');
+        $table->string('avatar')->nullable();
+        $table->rememberToken();
+        $table->timestamps();
+    });
+}
 
     public function down(): void
     {
