@@ -5,8 +5,8 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
-
 
 class AvatarService
 {
@@ -16,45 +16,93 @@ class AvatarService
 
     public function store(UploadedFile $file): string
     {
-        $info = @getimagesize($file->getRealPath());
-
-        if ($info === false) {
-            throw new RuntimeException('The uploaded file is not a valid image.');
+        if (! extension_loaded('gd')) {
+            throw ValidationException::withMessages([
+                'avatar' => 'Enable the PHP GD extension to process avatars.',
+            ]);
         }
 
-        [$width, $height, $type] = $info;
+        $source = @imagecreatefromstring(
+            file_get_contents($file->getRealPath())
+        );
 
-        $source = match ($type) {
-            IMAGETYPE_JPEG => imagecreatefromjpeg($file->getRealPath()),
-            IMAGETYPE_PNG => imagecreatefrompng($file->getRealPath()),
-            default => throw new RuntimeException('Only JPG and PNG images are supported.'),
-        };
+        if ($source === false) {
+            throw ValidationException::withMessages([
+                'avatar' => 'The image could not be processed.',
+            ]);
+        }
 
-        $side = min($width, $height);
-        $srcX = (int) (($width - $side) / 2);
-        $srcY = (int) (($height - $side) / 2);
+        $canvas = imagecreatetruecolor(
+            self::SIZE,
+            self::SIZE
+        );
 
-        $canvas = imagecreatetruecolor(self::SIZE, self::SIZE);
-        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
-        imagecopyresampled($canvas, $source, 0, 0, $srcX, $srcY, self::SIZE, self::SIZE, $side, $side);
+        try {
+            $width = imagesx($source);
+            $height = imagesy($source);
+            $side = min($width, $height);
 
-        ob_start();
-        imagejpeg($canvas, null, 85);
-        $jpeg = ob_get_clean();
+            $srcX = (int) (($width - $side) / 2);
+            $srcY = (int) (($height - $side) / 2);
 
-        imagedestroy($source);
-        imagedestroy($canvas);
+            imagefill(
+                $canvas,
+                0,
+                0,
+                imagecolorallocate($canvas, 255, 255, 255)
+            );
 
-        $path = self::DIRECTORY . '/' . Str::uuid() . '.jpg';
-        Storage::disk(self::DISK)->put($path, $jpeg);
+            imagecopyresampled(
+                $canvas,
+                $source,
+                0,
+                0,
+                $srcX,
+                $srcY,
+                self::SIZE,
+                self::SIZE,
+                $side,
+                $side,
+            );
 
-        return $path;
+            ob_start();
+
+            try {
+                if (! imagejpeg($canvas, null, 85)) {
+                    throw new RuntimeException(
+                        'Could not encode the avatar.'
+                    );
+                }
+
+                $jpeg = ob_get_contents();
+            } finally {
+                ob_end_clean();
+            }
+
+            $path = self::DIRECTORY.'/'.Str::uuid().'.jpg';
+
+            if (! Storage::disk(self::DISK)->put($path, $jpeg)) {
+                throw new RuntimeException(
+                    'Could not save the avatar.'
+                );
+            }
+
+            return $path;
+        } finally {
+            imagedestroy($source);
+            imagedestroy($canvas);
+        }
     }
 
-   
     public function delete(?string $path): void
     {
-        if ($path) {
+        if (
+            $path !== null
+            && preg_match(
+                '/\Aavatars\/[a-f0-9-]{36}\.jpg\z/',
+                $path
+            ) === 1
+        ) {
             Storage::disk(self::DISK)->delete($path);
         }
     }
