@@ -1,18 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Product List</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="container mt-4">
-    <h2>Product Management</h2>
-    <a href="{{ route('products.create') }}" class="btn btn-primary mb-3">Add New Product</a>
+@extends('layouts.app')
+
+@section('title', 'Products')
+
+@section('content')
+    <h1>Products</h1>
+
+    <a href="{{ route('products.create') }}" class="btn btn-add">
+        + Add Product
+    </a>
 
     @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
+        <div class="success-message">
+            {{ session('success') }}
+        </div>
     @endif
 
-    <table class="table table-bordered">
+    <table>
         <thead>
             <tr>
                 <th>Image</th>
@@ -22,30 +25,62 @@
                 <th>Actions</th>
             </tr>
         </thead>
+
         <tbody>
-            @foreach($products as $product)
-            <tr>
-                <td>
-                    @if($product->image)
-                        <img src="{{ asset('storage/' . $product->image) }}" width="50">
-                    @else
-                        No Image
-                    @endif
-                </td>
-                <td>{{ $product->name }}</td>
-                <td>₱{{ number_format($product->price, 2) }}</td>
-                <td>{{ $product->stock_quantity }}</td>
-                <td>
-                    <a href="{{ route('products.edit', $product->id) }}" class="btn btn-sm btn-warning">Edit</a>
-                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" style="display:inline;">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            @endforeach
+            @forelse($products as $product)
+                <tr>
+                    <td>
+                        @if($product->image)
+                            <img
+                                src="{{ asset('storage/' . $product->image) }}"
+                                alt="{{ $product->name }}"
+                                width="70"
+                                height="70"
+                                style="object-fit: cover; border-radius: 6px;"
+                            >
+                        @else
+                            No Image
+                        @endif
+                    </td>
+
+                    <td>{{ $product->name }}</td>
+
+                    <td>
+                        ₱{{ number_format($product->price, 2) }}
+                    </td>
+
+                    <td>{{ $product->stock_quantity }}</td>
+
+                    <td>
+                        <a
+                            href="{{ route('products.edit', $product->id) }}"
+                            class="btn btn-edit"
+                        >
+                            Edit
+                        </a>
+
+                        <form
+                            action="{{ route('products.destroy', $product->id) }}"
+                            method="POST"
+                        >
+                            @csrf
+                            @method('DELETE')
+
+                            <button
+                                type="submit"
+                                class="btn btn-delete"
+                                onclick="return confirm('Are you sure you want to delete this product?')"
+                            >
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5">No products found.</td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
-</body>
-</html>
+@endsection
