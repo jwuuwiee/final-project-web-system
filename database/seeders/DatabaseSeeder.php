@@ -2,24 +2,48 @@
 
 namespace Database\Seeders;
 
+use App\Models\Customer;
+use App\Models\Product;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::updateOrCreate(
+            ['username' => 'admin'],
+            [
+                'full_name' => 'System Administrator',
+                'password' => 'password',
+                'avatar' => null,
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        Product::updateOrCreate(
+            ['name' => 'Sample Product'],
+            [
+                'price' => 100.00,
+                'stock_quantity' => 50,
+                'image' => null,
+            ]
+        );
+
+        Product::updateOrCreate(
+            ['name' => 'Another Product'],
+            [
+                'price' => 150.00,
+                'stock_quantity' => 25,
+                'image' => null,
+            ]
+        );
+
+        Customer::updateOrCreate(
+            ['email' => 'customer@example.com'],
+            [
+                'full_name' => 'Sample Customer',
+                'phone' => '09123456789',
+            ]
+        );
     }
 }
