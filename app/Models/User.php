@@ -47,4 +47,10 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(
+            fn () => $this->avatar ? asset('storage/' . $this->avatar) : null
+        );
+    }
 }
